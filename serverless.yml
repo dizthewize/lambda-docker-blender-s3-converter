@@ -1,0 +1,51 @@
+service: converter-on-lambda
+configValidationMode: error
+
+custom:
+  destinationBucket: converter-on-lambda-bucket
+
+provider:
+  name: aws
+  region: us-east-1
+  profile: icosa_studios
+  memorySize: 10240
+  timeout: 900
+  ecr:
+    images:
+      converter-container-image:
+        path: ./
+
+  iam:
+    role:
+      name: ConverterLambdaS3Access
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "s3:*"
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:s3:::"
+                - "${self:custom.destinationBucket}"
+                - "/*"
+        - Effect: "Allow"
+          Action:
+            - "s3:*"
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:s3:::"
+                - "${self:custom.destinationBucket}"
+
+functions:
+  render:
+    image:
+      name: converter-container-image
+    maximumRetryAttempts: 0
+
+resources:
+  Resources:
+    S3BucketOutputs:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.destinationBucket}
