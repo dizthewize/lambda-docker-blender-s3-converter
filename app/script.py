@@ -41,8 +41,13 @@ bpy.ops.wm.open_mainfile(filepath="/tmp/scene.blend", load_ui=False)
 bpy.context.scene.render.filepath = f"/tmp/{filename}"
 bpy.context.scene.render.resolution_x = int(argv[0])
 bpy.context.scene.render.resolution_y = int(argv[1])
-## Enables headless rendering ##
+
+"""
+Enables headless rendering
+*Eevee engine does not allow for headless rendering*
+"""
 bpy.context.scene.render.engine = 'CYCLES'
+
 bpy.ops.render.render(write_still = True)
 
 try:
