@@ -1,4 +1,3 @@
-from datetime import datetime
 import boto3
 import botocore
 import bpy, bmesh # type: ignore
@@ -11,20 +10,18 @@ argv = argv[argv.index("--") + 1:] # get all args after "--"
 blend_in = argv[0]
 highres_out = argv[1]
 lowres_out = argv[2]
-scale = argv[3]
-yRotate = argv[4]
-shouldSmooth = argv[4]
 
 tokenDecRatio = 0.5 # .5  = 50% reduction in polys
 tokenDecAngle = 0.04363325 # 0.0872665 is 4 degrees
 correctZ = False
 
 s3 = boto3.resource("s3")
+OUTPUT_DIR = "test"
 BUCKET_NAME = "models.tabulasono.com"
-BLEND_FILE_PATH = f"/tmp/test.stl" ## filename is test.stl
+PROCESSING_FILE_PATH = "/tmp/processing.glb"
 
 try:
-    s3.Bucket(BUCKET_NAME).download_file("test/test.stl", BLEND_FILE_PATH)
+    s3.Bucket(BUCKET_NAME).download_file(blend_in, PROCESSING_FILE_PATH)
     print("-- S3 Download Complete...")
 except botocore.exceptions.ClientError as e:
     if e.response['Error']['Code'] == "404":
@@ -87,14 +84,6 @@ ctx['selected_editable_objects'] = obs
 # print("\n -- Merging meshes")
 bpy.ops.object.join(ctx)
 
-# TODO: - Rotate if necessary
-if yRotate != "0":
-  print("\n -- Rotating object by " + yRotate)
-
-# TODO: - Scale if necessary
-if scale != "1":
-  print("\n -- Scaling object to " + scale)
-
 if correctZ:
   try:
     print("\n -- Correcting Z")
@@ -113,9 +102,6 @@ print("\n -- Selecting meshes")
 obs = []
 for ob in bpy.context.scene.objects:
   if ob.type == 'MESH':
-    for f in ob.data.polygons:
-      if shouldSmooth == '1':
-        f.use_smooth = True
     bpy.context.view_layer.objects.active = ob
     ob.select_set(True)
     obs.append(ob)
@@ -157,11 +143,9 @@ except Exception as e:
 
 bpy.ops.export_scene.gltf(filepath=lowres_out, export_format='GLB', export_yup=1)
 
-# TODO: Add if statement to check for stl or glb file
-# TODO: upload file as lowres or highres depending on if statement
-
 try:
-  s3.Bucket(BUCKET_NAME).upload_file(f"/tmp/test.stl", f"test/{datetime.now().strftime('%Y_%m_%d-%I:%M:%S_%p')}_test.stl")
+  s3.Bucket(BUCKET_NAME).upload_file(highres_out, f"{OUTPUT_DIR}/test.highres.glb")
+  s3.Bucket(BUCKET_NAME).upload_file(lowres_out, f"{OUTPUT_DIR}/test.lowres.glb")
   print("-- S3 Upload Complete...")
 except botocore.exceptions.ClientError as e:
   if e.response['Error']:
